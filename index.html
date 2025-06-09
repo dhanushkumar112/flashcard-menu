@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flashcard Hub</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #fdfbfb, #ebedee);
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #00bcd4;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    #auth-section {
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    #main, #subject-view {
+      padding: 1rem;
+      display: none;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+    .search-bar {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .icon-btn {
+      margin: 5px;
+      padding: 10px;
+      font-size: 1.2rem;
+      background: #e0f7fa;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .subject, .flashcard {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 10px;
+      background-color: #f2f2f2;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    .subject:hover, .flashcard:hover {
+      transform: scale(1.02);
+    }
+    .tools {
+      display: flex;
+      gap: 8px;
+    }
+    .hidden {
+      display: none;
+    }
+    .flashcards {
+      margin-top: 10px;
+    }
+    .auth-toggle {
+      color: #00bcd4;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Flashcard Hub</h1>
+</header>
+
+<!-- Auth Section -->
+<div id="auth-section">
+  <div id="auth-form">
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="handleAuth()" id="auth-button">Sign In</button>
+    <p><span class="auth-toggle" onclick="toggleAuth()">Don't have an account? Sign Up</span></p>
+  </div>
+</div>
+
+<!-- Main Dashboard -->
+<div id="main">
+  <input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search subjects..." oninput="filterSubjects()">
+  <div>
+    <button class="icon-btn" onclick="addSubject()">➕ Add Subject</button>
+  </div>
+  <div class="section-title">📁 Your Subjects:</div>
+  <div id="subjectContainer"></div>
+</div>
+
+<!-- Inside Subject View -->
+<div id="subject-view">
+  <button onclick="backToMain()">⬅ Back</button>
+  <h2 id="subjectTitle"></h2>
+  <div>
+    <button class="icon-btn" onclick="addFlashcard()">➕ Add Flashcard</button>
+    <button class="icon-btn" onclick="shuffleFlashcards()">🔀 Shuffle</button>
+  </div>
+  <div class="flashcards" id="flashcardContainer"></div>
+</div>
+
+<script>
+let isSignup = false;
+let currentUser = null;
+let currentSubject = null;
+let subjectColors = ['#ffecb3', '#c8e6c9', '#ffcdd2', '#b2ebf2', '#e1bee7', '#f0f4c3'];
+let flashcardColors = ['#ffe0b2', '#dcedc8', '#f8bbd0', '#b2dfdb', '#d1c4e9', '#fff9c4'];
+
+function toggleAuth() {
+  isSignup = !isSignup;
+  document.getElementById('auth-button').innerText = isSignup ? 'Sign Up' : 'Sign In';
+  document.querySelector('.auth-toggle').innerText = isSignup ? 'Already have an account? Sign In' : "Don't have an account? Sign Up";
+}
+
+function handleAuth() {
+  const user = document.getElementById('username').value;
+  const pass = document.getElementById('password').value;
+  let users = JSON.parse(localStorage.getItem('users') || '{}');
+  if (isSignup) {
+    if (users[user]) {
+      alert('User already exists!');
+    } else {
+      users[user] = { password: pass, data: {} };
+      localStorage.setItem('users', JSON.stringify(users));
+      alert('Signup successful!');
+    }
+  } else {
+    if (users[user] && users[user].password === pass) {
+      currentUser = user;
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('main').style.display = 'block';
+      loadSubjects();
+    } else {
+      alert('Incorrect credentials.');
+    }
+  }
+}
+
+function getUserData() {
+  let users = JSON.parse(localStorage.getItem('users'));
+  return users[currentUser].data;
+}
+
+function saveUserData(data) {
+  let users = JSON.parse(localStorage.getItem('users'));
+  users[currentUser].data = data;
+  localStorage.setItem('users', JSON.stringify(users));
+}
+
+function addSubject() {
+  let name = prompt('Subject Name:');
+  if (name) {
+    let data = getUserData();
+    const color = subjectColors[Math.floor(Math.random() * subjectColors.length)];
+    data[name] = { flashcards: [], color };
+    saveUserData(data);
+    loadSubjects();
+  }
+}
+
+function loadSubjects() {
+  const container = document.getElementById('subjectContainer');
+  container.innerHTML = '';
+  const data = getUserData();
+  for (let subject in data) {
+    const div = document.createElement('div');
+    div.className = 'subject';
+    div.style.backgroundColor = data[subject].color;
+    div.innerHTML = `<span>${subject}</span>
+      <div class="tools">
+        <button onclick="renameSubject('${subject}')">✏️</button>
+        <button onclick="deleteSubject('${subject}')">🗑️</button>
+      </div>`;
+    div.onclick = (e) => {
+      if (!e.target.closest('.tools')) openSubject(subject);
+    };
+    container.appendChild(div);
+  }
+}
+
+function renameSubject(name) {
+  let newName = prompt('New name:', name);
+  if (newName && newName !== name) {
+    let data = getUserData();
+    data[newName] = data[name];
+    delete data[name];
+    saveUserData(data);
+    loadSubjects();
+  }
+}
+
+function deleteSubject(name) {
+  if (confirm('Delete subject?')) {
+    let data = getUserData();
+    delete data[name];
+    saveUserData(data);
+    loadSubjects();
+  }
+}
+
+function openSubject(name) {
+  currentSubject = name;
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('subject-view').style.display = 'block';
+  document.getElementById('subjectTitle').innerText = name;
+  loadFlashcards();
+}
+
+function backToMain() {
+  document.getElementById('subject-view').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  currentSubject = null;
+}
+
+function addFlashcard() {
+  let content = prompt('Enter flashcard content:');
+  if (content) {
+    let data = getUserData();
+    const color = flashcardColors[Math.floor(Math.random() * flashcardColors.length)];
+    data[currentSubject].flashcards.push({ content, color });
+    saveUserData(data);
+    loadFlashcards();
+  }
+}
+
+function loadFlashcards() {
+  const container = document.getElementById('flashcardContainer');
+  container.innerHTML = '';
+  let data = getUserData();
+  data[currentSubject].flashcards.forEach((card, i) => {
+    const div = document.createElement('div');
+    div.className = 'flashcard';
+    div.style.backgroundColor = card.color;
+    div.innerHTML = `<span>${card.content}</span>
+      <div class="tools">
+        <button onclick="renameFlashcard(${i})">✏️</button>
+        <button onclick="deleteFlashcard(${i})">🗑️</button>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function renameFlashcard(i) {
+  let data = getUserData();
+  let newText = prompt('Update flashcard:', data[currentSubject].flashcards[i].content);
+  if (newText) {
+    data[currentSubject].flashcards[i].content = newText;
+    saveUserData(data);
+    loadFlashcards();
+  }
+}
+
+function deleteFlashcard(i) {
+  if (confirm('Delete flashcard?')) {
+    let data = getUserData();
+    data[currentSubject].flashcards.splice(i, 1);
+    saveUserData(data);
+    loadFlashcards();
+  }
+}
+
+function shuffleFlashcards() {
+  let data = getUserData();
+  let cards = data[currentSubject].flashcards;
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  saveUserData(data);
+  loadFlashcards();
+}
+
+function filterSubjects() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.subject').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+  });
+}
+</script>
+
+</body>
+</html>
