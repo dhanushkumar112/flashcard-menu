@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard Menu</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .search-container {
+      padding: 1rem;
+      background: #ecf0f1;
+    }
+
+    #search {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .icon-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .icon-item {
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .icon-item:hover {
+      transform: scale(1.05);
+    }
+
+    .add-icon {
+      background: #27ae60;
+      color: white;
+      font-weight: bold;
+    }
+
+    .context-menu {
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 1000;
+    }
+
+    .context-menu button {
+      display: block;
+      padding: 0.5rem 1rem;
+      background: white;
+      border: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .context-menu button:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📚 Flashcard Subjects</h1>
+  </header>
+
+  <div class="search-container">
+    <input type="text" id="search" placeholder="Search subjects...">
+  </div>
+
+  <div class="icon-grid" id="iconGrid">
+    <!-- Subject Icons Here -->
+    <div class="icon-item add-icon" onclick="addSubject()">+</div>
+  </div>
+
+  <div class="context-menu" id="contextMenu">
+    <button onclick="renameSubject()">Rename</button>
+    <button onclick="deleteSubject()">Delete</button>
+  </div>
+
+  <script>
+    let subjects = JSON.parse(localStorage.getItem('subjects')) || ["Math", "Science", "History"];
+    let currentTarget = null;
+
+    function renderSubjects() {
+      const grid = document.getElementById("iconGrid");
+      grid.innerHTML = subjects.map(subj => `
+        <div class="icon-item" oncontextmenu="openContextMenu(event, this)" onclick="openFlashcards('${subj}')">${subj}</div>
+      `).join('') + '<div class="icon-item add-icon" onclick="addSubject()">+</div>';
+    }
+
+    function addSubject() {
+      const name = prompt("Enter subject name:");
+      if (name) {
+        subjects.push(name);
+        localStorage.setItem('subjects', JSON.stringify(subjects));
+        renderSubjects();
+      }
+    }
+
+    function openContextMenu(e, target) {
+      e.preventDefault();
+      currentTarget = target;
+      const menu = document.getElementById("contextMenu");
+      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${e.clientX}px`;
+      menu.style.display = 'block';
+    }
+
+    function renameSubject() {
+      const index = subjects.indexOf(currentTarget.innerText);
+      const newName = prompt("Enter new name:", currentTarget.innerText);
+      if (newName) {
+        subjects[index] = newName;
+        localStorage.setItem('subjects', JSON.stringify(subjects));
+        renderSubjects();
+      }
+      document.getElementById("contextMenu").style.display = 'none';
+    }
+
+    function deleteSubject() {
+      subjects = subjects.filter(subj => subj !== currentTarget.innerText);
+      localStorage.setItem('subjects', JSON.stringify(subjects));
+      renderSubjects();
+      document.getElementById("contextMenu").style.display = 'none';
+    }
+
+    function openFlashcards(subject) {
+      alert(`Open flashcards for: ${subject}`);
+      // Will expand later to open inner flashcard page
+    }
+
+    document.body.addEventListener('click', () => {
+      document.getElementById("contextMenu").style.display = 'none';
+    });
+
+    document.getElementById("search").addEventListener("input", function() {
+      const filter = this.value.toLowerCase();
+      const items = document.querySelectorAll(".icon-item");
+      items.forEach(item => {
+        if (item.innerText === "+") return;
+        item.style.display = item.innerText.toLowerCase().includes(filter) ? "block" : "none";
+      });
+    });
+
+    renderSubjects();
+  </script>
+</body>
+</html>
